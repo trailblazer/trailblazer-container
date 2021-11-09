@@ -1,35 +1,53 @@
 # Trailblazer::Container
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/trailblazer/container`. To experiment with that code, run `bin/console` for an interactive prompt.
+The `trailblazer-container` gem allows using `dry-container` to configure dependencies and inject them into your operations. This allows to omit hard-wiring of constants within operations, enables you to use `dry-system` for loading, and introduces a new testing approach.
 
-TODO: Delete this and the text above, and describe your gem
+## Overview
 
-## Installation
-
-Add this line to your application's Gemfile:
+Use a `dry-container` to configure your apps dependencies.
 
 ```ruby
-gem 'trailblazer-container'
+container = Dry::Container.new
+container.namespace('song') do
+  namespace('create') do
+    register('model.class') { Song }  # "song.create.model.class": Song
+    register('contract.default.class') { Song::Form::Create } # "song.create.contract.default.class": Song
+  end
+end
+container.register('logger') { Rails.application.logger } # you can maintain "global" dependencies, too.
 ```
 
-And then execute:
+With a container, your operation is not required to hard-wire constants in macros or steps. For example, many macros such as [`Model()`](https://trailblazer.to/2.1/docs/operation.html#operation-macros-model-dependency-injection
+) or [`Contract::Build()`](https://trailblazer.to/2.1/docs/operation.html#operation-contract-build-dependency-injection-contract-class) alternatively allow constants or configuration ("dependencies") to be injected.
 
-    $ bundle install
 
-Or install it yourself as:
+```ruby
+class Song
+  module Operation
+    class Create < Trailblazer::Operation
+      step Model()              # this macro needs {:"model.class"}
+      step Contract::Build()    # and this needs {:"contract.class"}
+      step :log
 
-    $ gem install trailblazer-container
+      def log(ctx, logger:, **) # {:logger} is also from the container!
+        logger.warn "Everything is cool!"
+      end
+    end
+  end
+end # Song
+```
 
-## Usage
+Using `Container::Namespaced` will bind the `dry-container` to a specific operation, providing an automatic namespace such as `song.create`. The operation doesn't even know anything about the container.
 
-TODO: Write usage instructions here
+```ruby
+ctx              = Trailblazer::Context({params: {id: 1}}, {})
+create_container = Trailblazer::Container::Namespaced.new(container, ctx, "song.create") # here, we provide the namespace.
 
-## Development
+signal, (ctx, _) = Trailblazer::Activity::TaskWrap.invoke(Song::Operation::Create, [create_container, {}])
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+## Status
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+This gem is still experimental. Please play around with it and [let us know](https://trailblazer.zulipchat.com) what works for you.
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/trailblazer-container.
+We will improve its usability in the coming weeks.
