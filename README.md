@@ -1,6 +1,6 @@
 # Trailblazer::Container
 
-The `trailblazer-container` gem allows using `dry-container` to configure dependencies and inject them into your operations. This allows to omit hard-wiring of constants within operations, enables you to use `dry-system` for loading, and introduces a new testing approach.
+The `trailblazer-container` gem allows using `dry-container` to configure dependencies and inject them into your operations. This enables you to omit hard-wiring of constants within operations, use `dry-system` for loading, and introduces a new testing approach.
 
 ## Overview
 
